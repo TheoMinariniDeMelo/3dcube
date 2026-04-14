@@ -48,3 +48,17 @@ void rotate_x(Vector* vector, float angle){
     vector->y = vector->y * _cos - vector->z * _sin;
     vector->z = vector->y * _sin + vector->z * _cos;
 }
+void rotate_y(Vector* vector, float angle){
+    float _cos = cos(angle);
+    float _sin = sin(angle);
+    vector->x = vector->x * _cos + vector->z * _sin;
+    vector->y = vector->y;
+    vector->z = -vector->x * _sin + vector->z * _cos;
+}
+void rotate_z(Vector* vector, float angle){
+    float _cos = cos(angle);
+    float _sin = sin(angle);
+    vector->x = vector->x * _cos - vector->y * _sin;
+    vector->y = vector->y * _cos - vector->x * _sin;
+    vector->z = vector->z; 
+}
