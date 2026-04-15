@@ -5,15 +5,24 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-#define move(x, y) printf("\x1b[%d;%dH", x, y) 
-#define clear() printf("\x1b[2J")
-#define CUBE_SIZE 50;
+#define move(x, y) printf("\x1b[%d;%dH", y, x) 
+#define clear() printf("\x1b[2J\x1b[H")
+
+#define CUBE_SIZE 50
 #define CUBE_CHAR '#'
+
+#define CUBE_LEFT  (-(CUBE_SIZE*2) / 2.0f)
+#define CUBE_TOP   ( CUBE_SIZE / 2.0f)
+#define CUBE_RIGHT ( (CUBE_SIZE*2) / 2.0f)
+#define CUBE_DOWN  (-CUBE_SIZE / 2.0f)
+#define CUBE_FRONT ( CUBE_SIZE / 2.0f)
+#define CUBE_BACK  (-CUBE_SIZE / 2.0f)
+
 typedef struct {
-    int x;
-    int y;
-    int z;
-} Vector;
+    float x;
+    float y;
+    float z;
+} Vector3;
 
 typedef struct {
     int x;
@@ -25,15 +34,15 @@ typedef struct {
     int numcol;
 } Screen;
 
-Vector vertices[8] = {
-    {-1, -1, -1}, // 0
-    { 1, -1, -1}, // 1
-    { 1,  1, -1}, // 2
-    {-1,  1, -1}, // 3
-    {-1, -1,  1}, // 4
-    { 1, -1,  1}, // 5
-    { 1,  1,  1}, // 6
-    {-1,  1,  1}  // 7
+Vector3 cube[8] = {
+    {CUBE_LEFT,  CUBE_DOWN, CUBE_BACK}, 
+    {CUBE_RIGHT, CUBE_DOWN, CUBE_BACK}, 
+    {CUBE_LEFT,  CUBE_DOWN, CUBE_FRONT},
+    {CUBE_RIGHT, CUBE_DOWN, CUBE_FRONT},
+    {CUBE_LEFT,  CUBE_TOP,  CUBE_BACK}, 
+    {CUBE_RIGHT, CUBE_TOP,  CUBE_BACK}, 
+    {CUBE_LEFT,  CUBE_TOP,  CUBE_FRONT}, 
+    {CUBE_RIGHT, CUBE_TOP,  CUBE_FRONT},
 };
 
 int arestas[12][2] =  {
@@ -42,15 +51,15 @@ int arestas[12][2] =  {
     {0, 4}, {1, 5}, {2, 6}, {3, 7}
 };
 
-int d = 10;
+float d = 80.0f;
 
-void print_cube(Screen*);
-void draw_line(Vector, Vector);
-void rotate_x(Vector*, float);
-void rotate_y(Vector*, float);
-void rotate_z(Vector*, float);
+void print_cube(Screen);
+void draw_line(Point, Point);
+void rotate_x(Vector3*, float);
+void rotate_y(Vector3*, float);
+void rotate_z(Vector3*, float);
 
-Point project(Vector);
+Point project(Vector3);
 
 int get_cursor_position(int *row, int *col){
     char buf[32];
@@ -65,7 +74,7 @@ int get_cursor_position(int *row, int *col){
     buf[i] = '\0';
     if(buf[0] != '\x1b' || buf[1] != '[') return -1;
     if(sscanf(&buf[2], "%d;%d", row, col) != 2) return -1;
-    return 0;
+    return 1;
 }
 
 
@@ -78,36 +87,40 @@ int get_window_size(Screen *screen){
         screen->numrow = ws.ws_row;
         screen->numcol = ws.ws_col;
     }
-    return 0;
+    return 1;
 }
 
 int main(){
-    float angle = 1;
+    float angle = 0.1;
     Screen sc;
-    
+
+    printf("\x1b[?25l"); // make cursor invisible
     if(get_window_size(&sc) <= 0){
-        perror("Error to get window size");
+        fprintf(stderr, "Error to get window size");
         exit(1);
     };
-    if(sc.numrow < 40 || sc.numcol < 40){
+    if(sc.numrow < 25 || sc.numcol < 40){
+        fprintf(stderr, "Not valid window size");
         exit(1);
     }
 
     for(;;){
         for(int i = 0; i < 8; ++i){
-            rotate_x(&vertices[i], angle);
-            rotate_y(&vertices[i], angle);
-            rotate_z(&vertices[i], angle);
+            rotate_x(&cube[i], angle);
+            rotate_y(&cube[i], angle);
+            rotate_z(&cube[i], angle);
         };
-        print_cube(&sc);
+        clear();
+        print_cube(sc);
+        usleep(1600);
     }
 }
 
-void print_cube(Screen *sc){
+void print_cube(Screen sc){
     for(int i = 0; i < 8; ++i){
-        Point p = project(vertices[i]);
-        int x = p.x + (sc->numcol/2);
-        int y = p.y + (sc->numrow/2);
+        Point p = project(cube[i]);
+        int x = (int)(sc.numcol/2) + p.x;
+        int y = (int)(sc.numrow/2) - p.y;
 
         move(x, y);
         printf("%c", CUBE_CHAR);
@@ -115,38 +128,44 @@ void print_cube(Screen *sc){
 }
 
 void 
-rotate_x(Vector* vector, float angle){
-    float _cos = cos(angle);
-    float _sin = sin(angle);
-    vector->x = vector->x;
-    vector->y = vector->y * _cos - vector->z * _sin;
-    vector->z = vector->y * _sin + vector->z * _cos;
+rotate_x(Vector3* vector, float angle){
+    float c = cos(angle);
+    float s = sin(angle);
+    float x = vector->x, y = vector->y, z = vector->z;
+    vector->x = x;
+    vector->y = y * c - z * s;
+    vector->z = y * s + z * c;
 }
 void 
-rotate_y(Vector* vector, float angle){
-    float _cos = cos(angle);
-    float _sin = sin(angle);
-    vector->x = vector->x * _cos + vector->z * _sin;
-    vector->y = vector->y;
-    vector->z = -vector->x * _sin + vector->z * _cos;
+rotate_y(Vector3* vector, float angle){
+    float c = cos(angle);
+    float s = sin(angle);
+    float x = vector->x, y = vector->y, z = vector->z;
+    vector->x = x * c + z * s;
+    vector->y = y;
+    vector->z = -x * s + z * c;
 }
 void 
-rotate_z(Vector* vector, float angle){
-    float _cos = cos(angle);
-    float _sin = sin(angle);
-    vector->x = vector->x * _cos - vector->y * _sin;
-    vector->y = vector->y * _cos - vector->x * _sin;
-    vector->z = vector->z; 
+rotate_z(Vector3* vector, float angle){
+    float c = cos(angle);
+    float s = sin(angle);
+    float x = vector->x, y = vector->y, z = vector->z;
+    vector->x = x * c - y * s;
+    vector->y = x*s + y * c;
+    vector->z = z; 
 }
 
-Point project(Vector v){
+Point project(Vector3 v){
+    v.z += 50;
+    float px = (v.x * d) / (v.z + d);
+    float py = (v.y * d) / (v.z + d);
     return (Point){
-        .x = (v.x*d)/(v.z + d),
-        .y = (v.y*d)/(v.z + d)
+        .x = (int) px,
+        .y = (int) py,
     };
 }
 
 void 
-draw_line(Vector vec1, Vector vec2){
+draw_line(Point p1, Point p2){
     
 }
