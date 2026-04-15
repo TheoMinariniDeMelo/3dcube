@@ -144,27 +144,33 @@ Point project(Vector3 v){
     };
 }
 
+
 void 
 plot_line(Point p1, Point p2){
     int dx = p2.x - p1.x;
     int dy = p2.y - p1.y;
-
+    int x = p1.x;
+    int y = p1.y;
+    int sx = dx > 0 ? 1 : -1;
+    int sy = dy > 0 ? 1 : -1;
     if(dx == 0){
-        int sy = (dy > 0) ? 1 : -1;
-        for(int y = p1.y; y != p2.y + sy; y += sy){
-            plot(p1.x, y);
+        for(int i = 0; i < dy; i++){
+            move(x, y);
+            y += sy;
         }
         return;
     }
-
-    int sx = (dx > 0) ? 1 : -1;
-    float m = (float)dy / dx;
-
-    for(int x = p1.x; x != p2.x + sx; x += sx){
-        float yf = m * (x - p1.x) + p1.y;
-        int y = (int)roundf(yf);
+    float m = (float)dy/dx;
+    int y0 = y + sy;
+    while(abs(x) <= abs(p2.x)){
         plot(x, y);
+        x += sx;
+        float p = m * (x - p1.x) + p1.y; 
+        if(fabs(p - y0) < fabs(p - y)){
+            y += sy; y0 += sy;
+        }
     }
+
 }
 int get_cursor_position(int *row, int *col){
     char buf[32];
