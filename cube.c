@@ -8,7 +8,7 @@
 #define move(x, y) printf("\x1b[%d;%dH", x, y) 
 #define clear() printf("\x1b[2J")
 #define CUBE_SIZE 50;
-
+#define CUBE_CHAR '#'
 typedef struct {
     int x;
     int y;
@@ -25,7 +25,7 @@ typedef struct {
     int numcol;
 } Screen;
 
-Vector vertices[8][3] = {
+Vector vertices[8] = {
     {-1, -1, -1}, // 0
     { 1, -1, -1}, // 1
     { 1,  1, -1}, // 2
@@ -44,7 +44,7 @@ int arestas[12][2] =  {
 
 int d = 10;
 
-void print_cube();
+void print_cube(Screen*);
 void draw_line(Vector, Vector);
 void rotate_x(Vector*, float);
 void rotate_y(Vector*, float);
@@ -95,17 +95,22 @@ int main(){
 
     for(;;){
         for(int i = 0; i < 8; ++i){
-            rotate_x(vertices[i], angle);
-            rotate_y(vertices[i], angle);
-            rotate_z(vertices[i], angle);
-        }
-        print_cube();
+            rotate_x(&vertices[i], angle);
+            rotate_y(&vertices[i], angle);
+            rotate_z(&vertices[i], angle);
+        };
+        print_cube(&sc);
     }
 }
 
-void print_cube(){
+void print_cube(Screen *sc){
     for(int i = 0; i < 8; ++i){
-        
+        Point p = project(vertices[i]);
+        int x = p.x + (sc->numcol/2);
+        int y = p.y + (sc->numrow/2);
+
+        move(x, y);
+        printf("%c", CUBE_CHAR);
     }
 }
 
@@ -132,6 +137,13 @@ rotate_z(Vector* vector, float angle){
     vector->x = vector->x * _cos - vector->y * _sin;
     vector->y = vector->y * _cos - vector->x * _sin;
     vector->z = vector->z; 
+}
+
+Point project(Vector v){
+    return (Point){
+        .x = (v.x*d)/(v.z + d),
+        .y = (v.y*d)/(v.z + d)
+    };
 }
 
 void 
