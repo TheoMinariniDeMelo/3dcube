@@ -9,7 +9,7 @@
 #define clear() printf("\x1b[2J\x1b[H")
 #define plot(x,y) move(x,y); printf("%c", CUBE_CHAR)
 #define CUBE_SIZE 50
-#define CUBE_CHAR '#'
+#define CUBE_CHAR 'O'
 #define FPS 30
 
 #define CUBE_LEFT  (-CUBE_SIZE/ 2.0f)
@@ -52,7 +52,7 @@ int arestas[12][2] =  {
     {0, 4}, {1, 5}, {2, 7}, {3, 6}
 };
 
-float d = 80.0f;
+float d = 100.0f;
 
 void print_cube(Screen);
 void plot_line(Point, Point);
@@ -65,7 +65,7 @@ int get_window_size(Screen*);
 Point project(Vector3);
 
 int main(){
-    float angle = 0.1;
+    float angle = -0.09;
     Screen sc;
 
     printf("\x1b[?25l"); // make cursor invisible
@@ -77,14 +77,14 @@ int main(){
         fprintf(stderr, "Not valid window size");
         exit(1);
     }
-
+    
     for(;;){
+        clear();
         for(int i = 0; i < 8; ++i){
             rotate_y(&cube[i], angle);
-            rotate_z(&cube[i], angle);
             rotate_x(&cube[i], angle);
+            rotate_z(&cube[i], angle);
         };
-        clear();
         print_cube(sc);
         usleep(1000000/FPS);
     }
@@ -101,6 +101,7 @@ void print_cube(Screen sc){
         p2.y = (int)(sc.numrow/2) - p2.y;
         plot_line(p1, p2);
     }
+    plot(1,1);
 }
 
 void 
@@ -135,7 +136,7 @@ rotate_z(Vector3* vector, float angle){
 //   y' =   ---------
 //           z/d + 1
 Point project(Vector3 v){
-    v.z += 100;
+    v.z += 140;
     float px = (v.x * d) / (v.z + d);
     float py = (v.y * d) / (v.z + d);
     return (Point){
@@ -144,33 +145,33 @@ Point project(Vector3 v){
     };
 }
 
-
+// Bresenham's line algorithm
 void 
 plot_line(Point p1, Point p2){
-    int dx = p2.x - p1.x;
-    int dy = p2.y - p1.y;
+    int dx = abs(p2.x - p1.x);
+    int dy = abs(p2.y - p1.y);
+    int sx = p1.x < p2.x ? 1 : -1;
+    int sy = p1.y < p2.y ? 1 : -1;
+
     int x = p1.x;
     int y = p1.y;
-    int sx = dx > 0 ? 1 : -1;
-    int sy = dy > 0 ? 1 : -1;
-    if(dx == 0){
-        for(int i = 0; i < dy; i++){
-            move(x, y);
+
+    int e = dx - dy; // margin of error
+    while(1){
+        plot(x,y);
+
+        if(y == p2.y && x == p2.x) return;
+        int e2 = 2 * e;
+        if(e2 > -dy){
+            e -= dy;
+            x += sx;
+        }
+
+        if(e2 < dx){
+            e += dx;
             y += sy;
         }
-        return;
     }
-    float m = (float)dy/dx;
-    int y0 = y + sy;
-    while(abs(x) <= abs(p2.x)){
-        plot(x, y);
-        x += sx;
-        float p = m * (x - p1.x) + p1.y; 
-        if(fabs(p - y0) < fabs(p - y)){
-            y += sy; y0 += sy;
-        }
-    }
-
 }
 int get_cursor_position(int *row, int *col){
     char buf[32];
